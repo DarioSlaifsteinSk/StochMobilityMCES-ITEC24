@@ -862,13 +862,6 @@ function build_data_DET(; nEV::Int64=2, # number of EVs in the system
     pricePath = "../data/input/EPEX/auction_spot_prices_netherlands_$year.csv"
     spotPriceDF = CSV.read(pricePath, DataFrame, delim=',', header=2);
 
-    #= for IECON 2023 =#
-        # summary data
-        # pricePath = "../data/input/EPEX/summaryPrice_Winter.csv";
-        # spotPriceDF = CSV.read(pricePath, DataFrame, delim=',', header=1);
-        # pricePath = "../data/input/EPEX/summaryPrice_Summer.csv";
-        # spotPriceDF = CSV.read(pricePath, DataFrame, delim=',', header=1);
-
     # for the electrical load
     if loadType == "GV"
         # processed synthezided load profile 1 year
@@ -876,30 +869,13 @@ function build_data_DET(; nEV::Int64=2, # number of EVs in the system
         loadE = CSV.read(loadEPath, DataFrame, header = false) # electric load
         # loadE = CSV.read("../data/input/GV/Load_1.csv", DataFrame, header=false) # electric load
         loadE= Vector(loadE[!,1]);
-    elseif loadType == "mffbas"
-        # From Market Facilitation Forum (MFF) and the Beheerder Afspraken Stelsel (BAS) i.e. mffbas
-        loadEPath = "../data/input/mffbas/summaryE1_$year.csv"
-        #= for IECON 2023 =#
-        # loadEPath = "../data/input/mffbas/summaryE1_mean_Winter.csv"
-        # loadEPath = "../data/input/mffbas/summaryE1_mean_Summer.csv"
-        loadE = CSV.read(loadEPath, DataFrame) # electric load
-        loadE= Vector(loadE[!,2]);
-
-    elseif loadType == "base_models" # Joel's base models
-        loadEPath = "../data/input/Base models/Load_Profile_15min.csv";
-        loadE = CSV.read(loadEPath, DataFrame, transpose=true, header=false)
-        loadE= Vector(loadE[!,1]);
     end
     # normalize loadE
     loadE=loadE./maximum(loadE);
     # peak of 5kW
     loadE=loadE*5.;
     # for the thermal load
-    if loadType == "base_models" || loadType == "mffbas"
-        loadThPath= "../data/input/Base models/Thermal_load_15min.csv";
-        loadTh = CSV.read(loadThPath, DataFrame, header = false) # thermal load
-        loadTh= Vector(loadTh[!,1]); loadTh=loadTh*1e-3;
-    elseif profType == "daily" # Nikos' models
+    if profType == "daily" # Nikos' models
         loadThPath_folder = "../data/input/model_Thermal_Nikos/";
         loadThPath = loadThPath_folder * "Residential_$(season)_heating_consumption_dailyAvg.csv";
         loadTh = CSV.read(loadThPath, DataFrame)
