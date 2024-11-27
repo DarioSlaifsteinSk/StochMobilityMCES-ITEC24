@@ -1,11 +1,6 @@
 # Stochastic Mobility Integration into Residential Energy Hubs
 ## ESARS-ITEC24 26-29 November 2024
 
-## Suggestions for a good README
-
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
 ## Description
 
 Code for reproducing the case studies of "Stochastic Mobility Integration into Residential Energy Hubs" presented in the ESARS-ITEC 2024 Conference held in Naples on 26-29th of November.

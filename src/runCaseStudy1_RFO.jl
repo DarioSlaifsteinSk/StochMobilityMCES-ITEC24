@@ -16,8 +16,8 @@ using Random,
     GLMakie,
     CairoMakie,
     Makie
-includet("../fns/EMSrfofns.jl")
 includet("../fns/build_data.jl")
+includet("../fns/EMSrfofns.jl")
 Random.seed!(1234);
 ## Define all the necessary functions
 function solvePolicies(optimizer, # model optimizer
@@ -53,8 +53,8 @@ end;
 
 # Define the weights
 # opt weights
-Wgrid = 1; WSoCDep = 1000; Wtess = 1000; Wπ = 0.0;
-W=[Wgrid WSoCDep Wtess Wπ];
+Wgrid = 1; WSoCDep = 1000;
+W=[Wgrid WSoCDep];
 # Initialize EMS
 s=modelSettingsRFO(nEV=2, t0=1/4,Tw=48-1/4, Δt=1/4, steps=50, num_samples = 500, costWeights=W, 
                 season="summer", profType="daily", loadType="GV", year=2023, cellID="SYNSANYO");

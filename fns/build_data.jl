@@ -1,4 +1,4 @@
-### EMS Robust functions
+### EMS RFO functions
 # This file contains the functions used for building a EMS model object.
 # The functions are mainly the device models (solar pv, bess, tess, etc.) and other elements (grid balances) of the EMS problem.
 
@@ -10,8 +10,7 @@
 ## Modeling functions
 # These functions are used to build the EMS model object. They include the device models, the grid balances and cost function.
 cd(@__DIR__)
-using Parameters, Serialization
-
+using Parameters, Serialization, Dates
 ################ FUNCTION DEFINITIONS ################
 function fromSecTo15min(x::Array)
     # this function downsamples a time series from seconds to 15 minutes.
@@ -99,6 +98,7 @@ function getSeasonalProfiles(data::Vector;
     type == "weekly" ? n_days=7 : nothing;
     type == "biweekly" ? n_days=7 : nothing;
     # Get seasonal profiles for each device
+    DateTime(2023,1,1,0,0,0)
     start_date = DateTime("2023-01-01T00:00:00")
     end_date = DateTime("2023-12-31T24:00:00")
     step = Dates.Minute(60/n_samples_per_hour)    
@@ -170,7 +170,7 @@ end
     dTime::Array = collect(t0:Δt:tend) # discrete time array [hr]
     steps::Int64 # number of times to move the window
     num_samples::Int64 # number of samples for RandomFieldOpt
-    costWeights::Array=[1 1000 1000 0.0]; # [Wgrid WSoCDep Wtess Wπ]; array with the corresponding weigths for each cost
+    costWeights::Array=[1 1000]; # [Wgrid WSoCDep]; array with the corresponding weigths for each cost
     # inputs for build_data
     season::String = "summer" # "summer" or "winter"
     profType::String # "daily" or "weekly" or "biweekly"
@@ -382,7 +382,7 @@ end
     tArr::Vector{Float64} # matrix of arrival times ℝ^{days}
 end
 
-@with_kw mutable struct driveDataRFO  # <:DriveDataType structure of sets
+@with_kw mutable struct driveDataRFO  # structure of sets
     # Driving info
     # Consumed power
     Pdrive::Vector{Vector{Float64}} # matrix of power consumption ℝ^{num_samples}
@@ -427,7 +427,7 @@ end
     capex::Float64=300; # capital expenditure [USD/kW]
 end;
 
-@with_kw mutable struct gridData <: ConnectionData
+@with_kw mutable struct gridData
     PowerLim::Array{Float64} # Max-Min power [kW]
     η::Float64 # multiport-converter efficiency [p.u.]
     λ::Array # energy prices. [buy; sell] 
@@ -482,22 +482,6 @@ function makeInputsplot(gridModel::gridData, spvModel::SPVData;
         axislegend(ax2; position=:rt)
         return f
 end
-
-# function getResultsRFO(model)
-#     x = all_variables(model)
-#     names = [name(var) for var in x]
-
-#     # remove all the variables with "" name
-#     id = findall(isequal(""), names)
-#     ic = [i for i ∈ 1:length(x) if i ∉ id]
-#     # select x not in id
-#     x = x[ic]
-#     values = [value(var) for var in x]
-#     names = [name(var) for var in x]
-#     # create a dictionary with the values and the names
-#     results = Dict(zip(names, values))
-#     return results
-# end
 
 ################ MODEL CREATION ################
 function build_data_RFO(; nEV::Int64=2, # number of EVs in the system
