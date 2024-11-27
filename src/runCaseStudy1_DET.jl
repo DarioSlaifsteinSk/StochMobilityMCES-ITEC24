@@ -4,7 +4,6 @@ cd(@__DIR__)
 using Random,
     InfiniteOpt,
     JuMP,
-    MathOptInterface,
     Ipopt,
     JSON3,
     MAT,
@@ -67,8 +66,6 @@ EMSData=build_data_DET(;nEV = s.nEV,
                 cellID = s.cellID,
                 stoch_num_samples = s.num_samples,
                 );
-makeInputsplot(EMSData["grid"], EMSData["SPV"])
-
 #### Case study 1 - Picking optimal Qbess battery capacity
 model = solvePolicies(Ipopt.Optimizer, s, EMSData);
 
