@@ -96,33 +96,6 @@ end
 res = optValues(model)
 
 folder = "../data/output/"
-open(folder * "cs1_$(s.season)_RFO_s$(s.num_samples)_ipopt.json", "w") do f
-    JSON3.pretty(f, res)
-end
-
-# Now lets solve all samples individually to show the different results
-# lets solve all the deterministic cases
-model_det = Vector{InfiniteModel}(undef, s.num_samples)
-s_det = modelSettingsRFO(nEV=2, t0=1/4,Tw=48-1/4, Δt=1/4, steps=50, num_samples = 1, costWeights=W, season="winter",
-                profType="daily", loadType="GV", year=2023, cellID="SYNSANYO");
-for i ∈ 1:s.num_samples
-    EMSData_i = copy(EMSData)
-    evModel = Vector{EVDataRFO}(undef, s.nEV)
-    for n ∈ 1:s.nEV
-        batteryPack = EMSData["EV"][n].carBatteryPack
-        drive_info = driveDataRFO([EMSData["EV"][n].driveInfo.Pdrive[i]],
-                                 EMSData["EV"][n].driveInfo.SoCdep,
-                                 [EMSData["EV"][n].driveInfo.γ[i]],
-                                 [EMSData["EV"][n].driveInfo.tDep[i]],
-                                 [EMSData["EV"][n].driveInfo.tArr[i]])
-        evModel[n] = EVDataRFO(batteryPack, drive_info)
-    end
-    EMSData_i["EV"] = evModel;
-    model_det[i] = solvePolicies(Ipopt.Optimizer, s_det, EMSData_i, Dict())
-end
-results_det = [getResultsRFO(model) for model ∈ model_det]
-results_det = [optValues(model) for model ∈ model_det]
-folder = "../data/output/RFO/"
 open(folder * "cs1_$(s.season)_DET_s$(s.num_samples)_ipopt.json", "w") do f
-    JSON3.pretty(f, results_det)
+    JSON3.pretty(f, res)
 end

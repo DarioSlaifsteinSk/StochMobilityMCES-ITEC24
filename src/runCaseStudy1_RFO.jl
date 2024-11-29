@@ -56,7 +56,7 @@ end;
 Wgrid = 1; WSoCDep = 1000;
 W=[Wgrid WSoCDep];
 # Initialize EMS
-s=modelSettingsRFO(nEV=2, t0=1/4,Tw=48-1/4, Δt=1/4, steps=50, num_samples = 500, costWeights=W, 
+s=modelSettingsRFO(nEV=2, t0=1/4,Tw=48-1/4, Δt=1/4, steps=50, num_samples = 10, costWeights=W, 
                 season="summer", profType="daily", loadType="GV", year=2023, cellID="SYNSANYO");
 EMSData=build_data_RFO(;nEV = s.nEV,
                 season = s.season,

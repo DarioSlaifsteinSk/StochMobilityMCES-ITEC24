@@ -205,11 +205,8 @@ end
     P0::Float64 # Initial P [kW]
     SoCLim::Array{Float64} # Min-Max SoC [p.u.]
     SoC0::Float64 # Initial SoC [p.u.]
-    termCond::Float64=6. # Termination condition [h]
     # Base parameters for performance sub-models.
     initQ::Float64 # initial cell Capacity in [Ah]
-    SoHQ::Float64=1 # State of Health [p.u.]
-    SoHR0::Float64=0 # State of Health [Ω]
     Np::Float64 # pack parallel branches
     Ns::Float64 # pack series cells
     η::Float64 # coulombic efficiency [p.u.]
@@ -233,28 +230,10 @@ end
     type="bucket";
 end
 
-abstract type AgingParams
-# Parameters for aging sub-models.
-    # Sub-models available:
-    # 1. empirical:
-    # Wang et al (2014) doi: 10.1016/j.jpowsour.2014.07.030
-    # 2. PB Jin: 
-    # Jin (2022) doi: 10.1016/j.electacta.2021.139651
-    # 3. PB Reniers:
-    # Reniers et al (2018) 10.1016/j.jpowsour.2018.01.004
-    # 4. PB Plett: 
-    # G.L. Plett, Ch.  "Battery Management Systems, Volume I, Battery Modeling," Artech House, 2015.
-    # G.L. Plett, Ch. 7 "Battery Management Systems, Volume II, Equivalent Circuit Methods" Artech House, 2016.
-end
-
 @with_kw mutable struct BESSData <: StorageAssetData
     GenInfo::Generic
-    PerfParameters::PerfParams
-    AgingParameters::AgingParams
-    
+    PerfParameters::PerfParams    
     cellID::String = "SYNSANYO" # cell ID for the battery packs
-    # # Cost info
-    # initValue::Float64 # Initial value of the BESS [USD/kWh]
 end
 
 # EV data
@@ -538,46 +517,30 @@ function build_data_RFO(; nEV::Int64=2, # number of EVs in the system
     Q0 = bessOCV["OCVQ"]; Q0 = mean(Q0); # [Ah/cell]
     η = bessOCV["OCVeta"]; η = mean(η); # [p.u.]
 
+
     # Heliox 43kWh battery pack seems a little bit too much lets use a 20kWh pack.
     # PowerLim = [-17, 17]; P0 = 0; # Power limits and initial condition [kW].
     PowerLim = [-25, 25]; P0 = 0; # Power limits and initial condition [kW].
     SoCLim = [0.2, 0.95]; SoC0 = 0.5; # SoC limits and initial condition [p.u.].
     ηC = 0.95; # Charger efficiency [p.u.].
     # State of Health
-    SoHQ = 1; SoHR0 = R0Param[Tind25][1];
     if cellID == "SYNSANYO"
         Np = 10; Ns = 100; # Branches in parallel and series cells per branch.
         ocv_params=OCVlinearPerfParams()
         vLim = [2.8, 4.2]
         # Ageing submodel
-        aging_params=JinAgingParams();
     elseif cellID == "A123"
         Np = 25; Ns = 110; # Branches in parallel and series cells per branch.
         # from 20% to 95% SoC
         ocv_params=OCVlinearPerfParams(ocvLine = [3.2, 0.2105])
-        # Ageing submodel
-        Cell = Construct("A123");
-        aging_params=JinAgingParams(Rs = Cell.Neg.Rs,
-                            An = Cell.Const.CC_A,
-                            Ln = Cell.Neg.L,
-                            z100p = Cell.Neg.θ_100,
-                            z0p = Cell.Neg.θ_0,
-                            # εₑ0 = Cell.Neg.ϵ_e,
-                            t⁺₀ = Cell.Const.t_plus,
-                            # DeRef= Cell.Neg.De,
-                            ce_avg = Cell.Const.ce0,
-                            # ce_max=Cell.Const.ce0,
-                            σn = Cell.Neg.σ,
-                            εₛ = Cell.Neg.ϵ_s, # check
-                            );
     end
     initVal=6e-2; # Cost info [USD/kWh/day].
     # General info definition
-    gen_params=Generic(PowerLim, P0, SoCLim, SoC0, Q0, SoHQ, SoHR0, Np, Ns, η, ocv_params, vLim, ηC, initVal);
+    gen_params=Generic(PowerLim, P0, SoCLim, SoC0, Q0, Np, Ns, η, ocv_params, vLim, ηC, initVal);
     # Performance submodel
     perf_params=bucketPerfParams();
     # wrap everything in a BESSData type
-    battModel = BESSData(gen_params, perf_params, aging_params, cellID);
+    battModel = BESSData(gen_params, perf_params, cellID);
 
     ## EV MODEL
     # An electric vehicle model is composed of two parts:
@@ -596,9 +559,9 @@ function build_data_RFO(; nEV::Int64=2, # number of EVs in the system
     P0=[0, 0]; # initial
     Q0 = Q0.*ones(nEV); # [Ah/cell]
     SoC0 = [0.6, 0.8]; # initial
-    gen_params = [Generic(PowerLim, P0[n], SoCLim, SoC0[n], Q0[n], SoHQ, SoHR0, Np, Ns, η, ocv_params, vLim, ηC, initVal) for n ∈ 1:nEV]
+    gen_params = [Generic(PowerLim, P0[n], SoCLim, SoC0[n], Q0[n], Np, Ns, η, ocv_params, vLim, ηC, initVal) for n ∈ 1:nEV]
     perf_params = [bucketPerfParams() for n ∈ 1:nEV]
-    batteryPack = [BESSData(gen_params[n], perf_params[n], aging_params, cellID) for n ∈ 1:nEV]
+    batteryPack = [BESSData(gen_params[n], perf_params[n], cellID) for n ∈ 1:nEV]
 
     # Driving information definition
     μD = 3.5; σD=1.5; # Parameters for the Gaussian distributions
@@ -753,40 +716,23 @@ function build_data_DET(; nEV::Int64=2, # number of EVs in the system
     SoCLim = [0.2, 0.95]; SoC0 = 0.5; # SoC limits and initial condition [p.u.].
     ηC = 0.95; # Charger efficiency [p.u.].
     # State of Health
-    SoHQ = 1; SoHR0 = R0Param[Tind25][1];
     if cellID == "SYNSANYO"
         Np = 10; Ns = 100; # Branches in parallel and series cells per branch.
         ocv_params=OCVlinearPerfParams()
         vLim = [2.8, 4.2]
         # Ageing submodel
-        aging_params=JinAgingParams();
     elseif cellID == "A123"
         Np = 25; Ns = 110; # Branches in parallel and series cells per branch.
         # from 20% to 95% SoC
         ocv_params=OCVlinearPerfParams(ocvLine = [3.2, 0.2105])
-        # Ageing submodel
-        Cell = Construct("A123");
-        aging_params=JinAgingParams(Rs = Cell.Neg.Rs,
-                            An = Cell.Const.CC_A,
-                            Ln = Cell.Neg.L,
-                            z100p = Cell.Neg.θ_100,
-                            z0p = Cell.Neg.θ_0,
-                            # εₑ0 = Cell.Neg.ϵ_e,
-                            t⁺₀ = Cell.Const.t_plus,
-                            # DeRef= Cell.Neg.De,
-                            ce_avg = Cell.Const.ce0,
-                            # ce_max=Cell.Const.ce0,
-                            σn = Cell.Neg.σ,
-                            εₛ = Cell.Neg.ϵ_s, # check
-                            );
     end
     initVal=6e-2; # Cost info [USD/kWh/day].
     # General info definition
-    gen_params=Generic(PowerLim, P0, SoCLim, SoC0, Q0, SoHQ, SoHR0, Np, Ns, η, ocv_params, vLim, ηC, initVal);
+    gen_params=Generic(PowerLim, P0, SoCLim, SoC0, Q0, Np, Ns, η, ocv_params, vLim, ηC, initVal);
     # Performance submodel
     perf_params=bucketPerfParams();
     # wrap everything in a BESSData type
-    battModel = BESSData(gen_params, perf_params, aging_params, cellID);
+    battModel = BESSData(gen_params, perf_params, cellID);
 
     ## EV MODEL
     # An electric vehicle model is composed of two parts:
@@ -805,9 +751,9 @@ function build_data_DET(; nEV::Int64=2, # number of EVs in the system
     P0=[0, 0]; # initial
     Q0 = Q0.*ones(nEV); # [Ah/cell]
     SoC0 = [0.6, 0.8]; # initial
-    gen_params = [Generic(PowerLim, P0[n], SoCLim, SoC0[n], Q0[n], SoHQ, SoHR0, Np, Ns, η, ocv_params, vLim, ηC, initVal) for n ∈ 1:nEV]
+    gen_params = [Generic(PowerLim, P0[n], SoCLim, SoC0[n], Q0[n], Np, Ns, η, ocv_params, vLim, ηC, initVal) for n ∈ 1:nEV]
     perf_params = [bucketPerfParams() for n ∈ 1:nEV]
-    batteryPack = [BESSData(gen_params[n], perf_params[n], aging_params, cellID) for n ∈ 1:nEV]
+    batteryPack = [BESSData(gen_params[n], perf_params[n], cellID) for n ∈ 1:nEV]
 
     # Driving information definition
     μD = 3.5; σD=1.5; # Parameters for the Gaussian distributions

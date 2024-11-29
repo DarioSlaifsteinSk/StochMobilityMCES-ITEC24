@@ -13,6 +13,16 @@ cd(@__DIR__)
 using Parameters, Serialization
 
 ################ MODEL CREATION ################
+function zero_order_time_index(ts, t)
+    inds = searchsorted(ts, t)
+    if !isempty(inds) || inds.start == 1
+        return inds.start
+    elseif inds.start > length(ts)
+        return length(ts)
+    else # we don't have an exact match so let's choose the earlier time index
+        return inds.stop
+    end
+end
 
 # Electric devices
 """
@@ -55,9 +65,9 @@ function bessRFO!(model::InfiniteModel, sets::modelSettingsRFO, data::Dict) # st
     SoCbess0 = SoC0; # Initial SoC [p.u.]
 
     # @unpack_Generic GenInfo
-    @unpack PowerLim, P0, SoCLim, SoC0, initQ, SoHQ, SoHR0, Np, Ns, η, OCVParam, vLim, ηC  = GenInfo
+    @unpack PowerLim, P0, SoCLim, SoC0, initQ, Np, Ns, η, OCVParam, vLim, ηC  = GenInfo
     @unpack ocvLine = OCVParam;
-    Npbess = Np; Nsbess = Ns;
+    Npbess = Np; Nsbess = Ns; Qbess0 = initQ
     crate = PbessMax * 1e3 / (Nsbess * Npbess * Qbess0 * vLim[2]); # C-rate
 
     # Add variables
@@ -110,12 +120,10 @@ function evRFO!(model::InfiniteModel, sets::modelSettingsRFO, data::Dict) # elec
     SoCdep = zeros(nEV)
     γ = Matrix{Vector{Float64}}(undef, num_samples, nEV)
     Pdrive = Matrix{Vector{Float64}}(undef, num_samples, nEV)
-
-
     for n in 1:nEV
-        @unpack GenInfo, PerfParameters, AgingParameters = data["EV"][n].carBatteryPack
+        @unpack GenInfo, PerfParameters = data["EV"][n].carBatteryPack
         # @unpack_Generic GenInfo
-        @unpack PowerLim, P0, SoCLim, SoC0, initQ, SoHQ, SoHR0, Np, Ns, η, OCVParam, vLim, ηC  = GenInfo
+        @unpack PowerLim, P0, SoCLim, SoC0, initQ, Np, Ns, η, OCVParam, vLim, ηC  = GenInfo
         @unpack ocvLine = OCVParam
 
         performanceParams[n] = PerfParameters
@@ -127,7 +135,7 @@ function evRFO!(model::InfiniteModel, sets::modelSettingsRFO, data::Dict) # elec
         SoCevMax[n] = SoCLim[2] # Max State of Charge [p.u.]
         SoCev0[n] = SoC0 # Initial SoC [p.u.]
         Npev[n] = Np; Nsev[n] = Ns;
-        ηev[n] = η; Qev0[n] = initQ * SoHQ;
+        ηev[n] = η; Qev0[n] = initQ;
         aOCV[n] = ocvLine[1]; bOCV[n] = ocvLine[2];
         vMax[n] = vLim[2];
         SoCdep[n] = data["EV"][n].driveInfo.SoCdep
@@ -147,7 +155,7 @@ function evRFO!(model::InfiniteModel, sets::modelSettingsRFO, data::Dict) # elec
     # Now we need to project it into the cont t-domain.
     # create the samples for the availability in ℝ^(nₛ × nₑᵥ)
     # create the interpolation functions in a vector of samples nₛ
-    γ_interps = [linear_interpolation((Dt, 1:nEV), hcat(γ[i,:])) for i in 1:num_samples]
+    γ_interps = [linear_interpolation((Dt, 1:nEV), hcat(γ[i,:]...)) for i in 1:num_samples]
     # make InfiniteOpt compatible on the t-cont domain
     @parameter_function(model, γf[i ∈ 1:num_samples, n ∈ 1:nEV] == (t) -> γ_interps[i](t, n))
 
@@ -174,7 +182,7 @@ function evRFO!(model::InfiniteModel, sets::modelSettingsRFO, data::Dict) # elec
         end
     end
     # and we convert it into a parameter function
-    neg_γP_interps = [linear_interpolation((Dt, 1:nEV), hcat(neg_γP[i,:])) for i in 1:num_samples]
+    neg_γP_interps = [linear_interpolation((Dt, 1:nEV), hcat(neg_γP[i,:]...)) for i in 1:num_samples]
     @parameter_function(model, Pdrivef[i ∈ 1:num_samples, n ∈ 1:nEV] == (t) -> neg_γP_interps[i](t, n))
     @constraints(model, begin
         [i ∈ 1:num_samples, n ∈ 1:nEV], SoCev[i,n](t0) == SoCev0[n] .* Eev0[n] # Initial conditions
