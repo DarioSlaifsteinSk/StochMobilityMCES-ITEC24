@@ -55,5 +55,6 @@ For support on code usage please submit an issue on the repository.
 ## Authors and acknowledgment
 This paper was done by Dario Slaifstein, Alvaro Menendez Agudin, Gautham Ram Chandra Mouli, Laura Ramirez Elizondo, and Pavol Bauer.
 
-## License
-For open source projects, say how it is licensed.
+## Citing
+
+[D. Slaifstein, A. M. Agudin, G. R. C. Mouli, L. Ramírez-Elizondo and P. Bauer, "Stochastic Mobility Integration into Residential Energy Hubs," 2024 IEEE International Conference on Electrical Systems for Aircraft, Railway, Ship Propulsion and Road Vehicles & International Transportation Electrification Conference (ESARS-ITEC), Naples, Italy, 2024, pp. 1-7, doi: 10.1109/ESARS-ITEC60450.2024.10819794.](https://ieeexplore-ieee-org.tudelft.idm.oclc.org/document/10819794)
